@@ -1,8 +1,9 @@
 const express = require("express");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
-const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+
 const app = express();
 const port = process.env.port || 5000;
 app.use(cors());
@@ -21,6 +22,9 @@ app.get("/", (req, res) => {
   res.send("Hello World!");
 });
 
+app.get("/test", (req, res) => {
+  res.send({ okk: "okk" });
+});
 async function run() {
   try {
     const database = client.db("funds").collection("allfunds");
@@ -31,6 +35,12 @@ async function run() {
       .db("raffle")
       .collection("raffleWinner");
     const giftCardCollection = client.db("giftCards").collection("giftCard");
+    const allSponsorshipCollection = client
+      .db("sponsorships")
+      .collection("allSponsorship");
+    const selectedSponsorshipCollection = client
+      .db("sponsorships")
+      .collection("selectedSponsorship");
 
     // top donors insert here
     // const docs = {
@@ -108,6 +118,7 @@ async function run() {
     app.post("/isadmin", (req, res) => {
       const userUid = req.body.userUid;
       const user = req.body;
+      console.log(userUid, "=?", process.env.ADMIN_USER_UID);
       if (!(userUid === process.env.ADMIN_USER_UID)) {
         console.log("this is not admin");
         res.status(401).send("unauthorised admin access");
@@ -519,6 +530,51 @@ async function run() {
       // console.log("cursor", cursor);
       const currentNotificetion = await cursor.toArray();
       res.send(currentNotificetion);
+    });
+    app.post("/setsponsorship", async (req, res) => {
+      const sponsorship = req.body;
+      console.log(sponsorship);
+      const result = await allSponsorshipCollection.insertOne(sponsorship);
+      // const isSent = result.acknowledged;
+      console.log(result);
+      res.send(result);
+    });
+    app.get("/getsponsorship", async (req, res) => {
+      const cursor = await allSponsorshipCollection.find({});
+      // console.log("cursor", cursor);
+      const allSponsorship = await cursor.toArray();
+      res.send(allSponsorship);
+    });
+    app.post("/approvesponsorship:id", async (req, res) => {
+      const advId = req.params.id;
+      console.log(advId);
+      // allSponsorshipCollection
+      const query = {
+        _id: ObjectId(advId),
+      };
+      const result = await allSponsorshipCollection.findOne(query);
+      const firstBanner = result.firstBanner;
+      const secondBanner = result.secondBanner;
+      const selectedAdv = { firstBanner, secondBanner };
+
+      const selectedAdvInserted = await selectedSponsorshipCollection.insertOne(
+        selectedAdv
+      );
+      if (selectedAdvInserted.acknowledged) {
+        const result = await allSponsorshipCollection.deleteOne(query);
+        res.send(result);
+      }
+    });
+    app.get("/getselectedAdvertisement", async (req, res) => {
+      const cursor = await selectedSponsorshipCollection.find({});
+      // console.log("cursor", cursor);
+      const allselectedSponsorship = await cursor.toArray();
+      const length = allselectedSponsorship.length;
+      console.log(length);
+      const firstSponsorship = allselectedSponsorship[length - 1];
+      const secondSponsorship = allselectedSponsorship[length - 2];
+      const currentSponsorship = [firstSponsorship, secondSponsorship];
+      res.send(currentSponsorship);
     });
   } finally {
   }
