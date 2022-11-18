@@ -401,63 +401,75 @@ async function run() {
     app.get("/drawraffle", verifyJWT, async (req, res) => {
       const query = {};
       const result = await raffleBuyerIdCollection.findOne(query);
-      console.log("result", result);
-      if (!result) {
-        console.log("something went wrong");
-        res.status(401).send("okk");
+      const totalSellingIdList = result?.buyersIdCollection;
+      const totalSellingTicket = totalSellingIdList.length;
+      console.log(totalSellingTicket);
+      if (totalSellingTicket < 6) {
+        res.send({ acknowledged: false });
       } else {
-        const buyerIdArray = result?.buyersIdCollection;
-        console.log("buyerIdArray", buyerIdArray);
-        let winnerTicketNoList = [];
-        let tottalSellingTicket = buyerIdArray.length - 1;
+        if (!result) {
+          console.log("something went wrong");
+          res.send({ acknowledged: false });
+        } else {
+          const buyerIdArray = result?.buyersIdCollection;
+          console.log("buyerIdArray", buyerIdArray);
+          let winnerTicketNoList = [];
+          let tottalSellingTicket = buyerIdArray.length - 1;
 
-        let generateWinner = () => {
-          let winnerTicketNo = Math.floor(Math.random() * tottalSellingTicket);
-          console.log("okk", winnerTicketNo);
-          while (
-            winnerTicketNo > tottalSellingTicket ||
-            winnerTicketNoList.includes(winnerTicketNo)
-          ) {
-            winnerTicketNo = Math.floor(Math.random() * tottalSellingTicket);
-          }
-          if (winnerTicketNoList.length === 5) {
-            return;
-          }
+          let generateWinner = () => {
+            let winnerTicketNo = Math.floor(
+              Math.random() * tottalSellingTicket
+            );
+            console.log("okk", winnerTicketNo);
+            while (
+              winnerTicketNo > tottalSellingTicket ||
+              winnerTicketNoList.includes(winnerTicketNo)
+            ) {
+              winnerTicketNo = Math.floor(Math.random() * tottalSellingTicket);
+              // console.log("loping");
+            }
 
-          winnerTicketNoList.push(winnerTicketNo);
+            winnerTicketNoList.push(winnerTicketNo);
+            if (winnerTicketNoList.length === 5) {
+              return;
+            }
+            generateWinner();
+          };
+
           generateWinner();
-        };
+          console.log("okkkkk", winnerTicketNoList);
+          const winnerIdList = winnerTicketNoList.map(
+            (winnerTicketNo) => buyerIdArray[winnerTicketNo]
+          );
 
-        generateWinner();
+          console.log("buyer id array", buyerIdArray);
+          console.log("winner ticket no in array", winnerTicketNoList);
+          console.log("winner ID in array", winnerIdList);
+          const raffleWinnerCollectionDeleted =
+            await raffleWinnerCollection.deleteMany({});
+          let winnerList = [];
+          const getWinner = async () => {
+            winnerIdList.forEach(async (winnerId) => {
+              let filter = {
+                buyerId: winnerId,
+              };
+              let winnerResult = await raffleBuyerCollection.findOne(filter);
 
-        const winnerIdList = winnerTicketNoList.map(
-          (winnerTicketNo) => buyerIdArray[winnerTicketNo]
-        );
+              const result = await raffleWinnerCollection.insertOne(
+                winnerResult
+              );
+            });
 
-        console.log("buyer id array", buyerIdArray);
-        console.log("winner ticket no in array", winnerTicketNoList);
-        console.log("winner ID in array", winnerIdList);
-        const raffleWinnerCollectionDeleted =
-          await raffleWinnerCollection.deleteMany({});
-        let winnerList = [];
-        const getWinner = async () => {
-          winnerIdList.forEach(async (winnerId) => {
-            let filter = {
-              buyerId: winnerId,
-            };
-            let winnerResult = await raffleBuyerCollection.findOne(filter);
-
-            const result = await raffleWinnerCollection.insertOne(winnerResult);
-          });
-
-          const raffleBuyerIdCollectionDeleted =
-            await raffleBuyerIdCollection.deleteMany({});
-          const raffleBuyerCollectionDeleted =
-            await raffleBuyerCollection.deleteMany({});
-        };
-        getWinner();
-
-        res.send(result);
+            const raffleBuyerIdCollectionDeleted =
+              await raffleBuyerIdCollection.deleteMany({});
+            const raffleBuyerCollectionDeleted =
+              await raffleBuyerCollection.deleteMany({});
+            return raffleBuyerCollectionDeleted;
+          };
+          const drawn = await getWinner();
+          console.log("isdrawn", drawn);
+          res.send(drawn);
+        }
       }
     });
 
@@ -575,6 +587,11 @@ async function run() {
       const secondSponsorship = allselectedSponsorship[length - 2];
       const currentSponsorship = [firstSponsorship, secondSponsorship];
       res.send(currentSponsorship);
+    });
+    app.get("/rafflecount", async (req, res) => {
+      const query = {};
+      const result = await raffleBuyerIdCollection.findOne(query);
+      res.send(result);
     });
   } finally {
   }
