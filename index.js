@@ -47,6 +47,7 @@ async function run() {
     //   userUid: "0epYuhx6cKeCw6mGQlOg0qNFvGb2",
     //   name: "vatar",
     //   email: "vatar@gmail.com",
+    // এই ব্যাডা , এগুলা কি লিখছোস , ব্যাদ্দোপ ।
     //   amount: 1000,
     // };
     // const result1 = await donorCollectionDatabase.insertOne(docs);
